@@ -7,6 +7,7 @@
     customDict: 'kpop_practice_custom_dict_v1',
     flashcards: 'kpop_practice_flashcards_v1',
     lastLyrics: 'kpop_practice_last_lyrics_v1',
+    library: 'kpop_practice_song_library_v1',
   };
 
   const PARTICLES = [
@@ -36,9 +37,11 @@
 
   let customDict = loadJSON(STORAGE_KEYS.customDict, []); // [{kr, en}]
   let flashcards = loadJSON(STORAGE_KEYS.flashcards, []); // [{id, kr, en, box, dueAt}]
+  let songLibrary = loadJSON(STORAGE_KEYS.library, []); // [{id, title, text, savedAt}]
 
   function persistDict() { saveJSON(STORAGE_KEYS.customDict, customDict); }
   function persistCards() { saveJSON(STORAGE_KEYS.flashcards, flashcards); }
+  function persistLibrary() { saveJSON(STORAGE_KEYS.library, songLibrary); }
 
   // ---------- dictionary lookup ----------
 
@@ -241,6 +244,76 @@
     exampleButtonsWrap.appendChild(btn);
   });
 
+  // ---------- song library ----------
+
+  const songTitleInput = document.getElementById('song-title-input');
+  const saveSongBtn = document.getElementById('save-song-btn');
+  const songLibraryList = document.getElementById('song-library-list');
+
+  function renderSongLibrary() {
+    songLibraryList.innerHTML = '';
+    if (songLibrary.length === 0) {
+      songLibraryList.innerHTML = '<p class="hint small">No saved songs yet — paste lyrics, give them a title above, and click "Save song".</p>';
+      return;
+    }
+    songLibrary.forEach((song) => {
+      const row = document.createElement('div');
+      row.className = 'song-row';
+
+      const loadBtn = document.createElement('button');
+      loadBtn.textContent = song.title;
+      loadBtn.className = 'example-btn song-load-btn';
+      loadBtn.addEventListener('click', () => {
+        lyricsInput.value = song.text;
+        songTitleInput.value = song.title;
+        setLyricsFromText(song.text);
+      });
+
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '✕';
+      delBtn.title = 'Delete song';
+      delBtn.className = 'small-btn danger song-delete-btn';
+      delBtn.addEventListener('click', () => {
+        songLibrary = songLibrary.filter((s) => s.id !== song.id);
+        persistLibrary();
+        renderSongLibrary();
+        populateQuizSourceOptions();
+      });
+
+      row.appendChild(loadBtn);
+      row.appendChild(delBtn);
+      songLibraryList.appendChild(row);
+    });
+  }
+
+  saveSongBtn.addEventListener('click', () => {
+    const title = songTitleInput.value.trim();
+    const text = lyricsInput.value;
+    if (!title) {
+      songTitleInput.focus();
+      return;
+    }
+    if (!text.trim()) return;
+
+    const existing = songLibrary.find((s) => s.title === title);
+    if (existing) {
+      existing.text = text;
+      existing.savedAt = Date.now();
+    } else {
+      songLibrary.push({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        title,
+        text,
+        savedAt: Date.now(),
+      });
+    }
+    persistLibrary();
+    renderSongLibrary();
+    populateQuizSourceOptions();
+  });
+
+  renderSongLibrary();
+
   // restore last session's pasted lyrics, if any
   const savedLyrics = loadJSON(STORAGE_KEYS.lastLyrics, '');
   if (savedLyrics) {
@@ -429,6 +502,10 @@
     quizSourceSelect.innerHTML = '';
     const opts = [];
     if (currentLineSet.length > 0) opts.push({ label: 'Current lyrics (Lyrics tab)', lines: currentLineSet });
+    songLibrary.forEach((song) => {
+      const lines = song.text.split('\n').map((l) => l.trim()).filter((l) => l.length > 0).map((kr) => ({ kr }));
+      opts.push({ label: `🎵 ${song.title}`, lines });
+    });
     EXAMPLE_SETS.forEach((set) => opts.push({ label: set.title, lines: set.lines }));
     opts.forEach((opt, idx) => {
       const o = document.createElement('option');
