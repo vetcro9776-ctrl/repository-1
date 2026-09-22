@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K-Pop Korean Lyrics Practice</title>
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <h1>🎤 K-Pop Korean Lyrics Practice</h1>
+    <p class="subtitle">Paste lyrics, get romanization + word meanings, and drill vocab with flashcards &amp; quizzes.</p>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-button active" data-tab="panel-lyrics">Lyrics</button>
+    <button class="tab-button" data-tab="panel-flashcards">Flashcards</button>
+    <button class="tab-button" data-tab="panel-quiz">Quiz</button>
+  </nav>
+
+  <main>
+    <section id="panel-lyrics" class="tab-panel active">
+      <div class="lyrics-layout">
+        <div class="lyrics-input-col">
+          <label for="lyrics-input">Paste Korean lyrics (one line per row):</label>
+          <textarea id="lyrics-input" rows="14" placeholder="붙여넣기: 여기에 한국어 가사를 붙여넣으세요..."></textarea>
+          <div class="btn-row">
+            <button id="show-lyrics-btn" class="primary-btn">Show lyrics</button>
+            <label class="checkbox-label">
+              <input type="checkbox" id="toggle-romanization" checked>
+              Show romanization
+            </label>
+          </div>
+          <div class="examples-block">
+            <p class="hint small">Or try an example (original practice verses, not real song lyrics — copyrighted lyrics aren't included in this app):</p>
+            <div id="example-buttons" class="example-buttons"></div>
+          </div>
+        </div>
+
+        <div class="lyrics-output-col">
+          <div id="lyrics-output" class="lyrics-output"></div>
+        </div>
+
+        <div class="word-panel-col">
+          <h2>Word lookup</h2>
+          <div id="word-panel" class="word-panel">
+            <p class="hint">Click any Korean word to see its meaning.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="panel-flashcards" class="tab-panel">
+      <div class="flashcards-layout">
+        <div class="flashcard-list-col">
+          <h2>Your deck (<span id="flashcard-count">0</span> cards)</h2>
+          <div id="flashcard-list" class="flashcard-list"></div>
+        </div>
+        <div class="flashcard-review-col">
+          <h2>Review</h2>
+          <div class="btn-row">
+            <button id="start-review-btn" class="primary-btn">Review due cards</button>
+            <button id="review-all-btn" class="secondary-btn">Review all</button>
+          </div>
+          <div id="review-area" class="review-area">
+            <p class="hint">Start a review to practice your flashcards.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="panel-quiz" class="tab-panel">
+      <h2>Fill in the blank</h2>
+      <div class="btn-row">
+        <select id="quiz-source"></select>
+        <button id="start-quiz-btn" class="primary-btn">Start quiz</button>
+      </div>
+      <div id="quiz-area" class="quiz-area">
+        <p class="hint">Pick a lyric source and start the quiz.</p>
+      </div>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <p class="hint small">Romanization is an approximate, syllable-by-syllable reading aid (Revised-Romanization-style) — real pronunciation can involve extra sound changes. Vocabulary is a curated learner's dictionary, not machine translation.</p>
+  </footer>
+
+  <script src="js/romanize.js"></script>
+  <script src="js/dictionary.js"></script>
+  <script src="js/examples.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
