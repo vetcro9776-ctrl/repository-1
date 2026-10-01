@@ -84,7 +84,17 @@
     </section>
 
     <section id="panel-quiz" class="tab-panel">
-      <h2>Fill in the blank</h2>
+      <h2>Quiz</h2>
+      <div class="btn-row quiz-mode-row">
+        <label class="radio-label">
+          <input type="radio" name="quiz-mode" value="vocab" checked>
+          Vocabulary (4-choice)
+        </label>
+        <label class="radio-label">
+          <input type="radio" name="quiz-mode" value="blank">
+          Fill in the blank
+        </label>
+      </div>
       <div class="btn-row">
         <select id="quiz-source"></select>
         <button id="start-quiz-btn" class="primary-btn">Start quiz</button>

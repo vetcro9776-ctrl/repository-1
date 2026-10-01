@@ -519,8 +519,24 @@
   let quizItems = [];
   let quizIndex = 0;
   let quizScore = 0;
+  let quizMode = 'vocab';
 
-  function buildQuizItems(lines) {
+  document.querySelectorAll('input[name="quiz-mode"]').forEach((radio) => {
+    radio.addEventListener('change', (e) => {
+      if (e.target.checked) quizMode = e.target.value;
+    });
+  });
+
+  function shuffle(arr) {
+    const copy = arr.slice();
+    for (let i = copy.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [copy[i], copy[j]] = [copy[j], copy[i]];
+    }
+    return copy;
+  }
+
+  function buildBlankQuizItems(lines) {
     const items = [];
     lines.forEach((line) => {
       const words = line.kr.split(/\s+/).filter((w) => containsHangul(w));
@@ -530,19 +546,47 @@
       const display = line.kr.replace(blankWord, '_____');
       items.push({ display, answer: cleaned, full: line.kr });
     });
-    // shuffle and cap at 10 questions
-    for (let i = items.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [items[i], items[j]] = [items[j], items[i]];
-    }
-    return items.slice(0, 10);
+    return shuffle(items).slice(0, 10);
+  }
+
+  /** Find every word in `lines` that resolves to a dictionary entry, deduplicated by Korean form. */
+  function collectKnownWords(lines) {
+    const seen = new Map(); // kr -> en
+    lines.forEach((line) => {
+      line.kr.split(/\s+/).forEach((tok) => {
+        if (!containsHangul(tok)) return;
+        const result = lookupWord(tok);
+        if (result.entry && !seen.has(result.query)) {
+          seen.set(result.query, result.entry.en);
+        }
+      });
+    });
+    return Array.from(seen, ([kr, en]) => ({ kr, en }));
+  }
+
+  function buildVocabQuizItems(lines) {
+    const known = collectKnownWords(lines);
+    const fullPool = [...BASE_DICTIONARY, ...customDict];
+    if (known.length === 0) return [];
+
+    const items = shuffle(known)
+      .slice(0, 10)
+      .map((correct) => {
+        const distractorPool = fullPool.filter((e) => e.en !== correct.en && e.kr !== correct.kr);
+        const distractors = shuffle(distractorPool).slice(0, 3).map((e) => e.en);
+        const options = shuffle([correct.en, ...distractors]);
+        return { kr: correct.kr, correctEn: correct.en, options };
+      })
+      .filter((item) => item.options.length === 4); // skip if dictionary too small for 3 distractors
+
+    return items;
   }
 
   startQuizBtn.addEventListener('click', () => {
     const opts = quizSourceSelect._opts || [];
     const chosen = opts[Number(quizSourceSelect.value)];
     if (!chosen) return;
-    quizItems = buildQuizItems(chosen.lines);
+    quizItems = quizMode === 'vocab' ? buildVocabQuizItems(chosen.lines) : buildBlankQuizItems(chosen.lines);
     quizIndex = 0;
     quizScore = 0;
     renderQuizItem();
@@ -551,7 +595,9 @@
   function renderQuizItem() {
     quizArea.innerHTML = '';
     if (quizItems.length === 0) {
-      quizArea.innerHTML = '<p class="hint">Not enough words in that source to build a quiz.</p>';
+      quizArea.innerHTML = quizMode === 'vocab'
+        ? '<p class="hint">No known vocabulary found in that source yet — click some words in the Lyrics tab first (or try "Fill in the blank" instead).</p>'
+        : '<p class="hint">Not enough words in that source to build a quiz.</p>';
       return;
     }
     if (quizIndex >= quizItems.length) {
@@ -562,11 +608,65 @@
       return;
     }
 
-    const item = quizItems[quizIndex];
     const progress = document.createElement('p');
     progress.className = 'hint small';
     progress.textContent = `Question ${quizIndex + 1} of ${quizItems.length} — Score: ${quizScore}`;
     quizArea.appendChild(progress);
+
+    if (quizMode === 'vocab') renderVocabQuestion();
+    else renderBlankQuestion();
+  }
+
+  function advanceQuiz() {
+    const nextBtn = document.createElement('button');
+    nextBtn.textContent = quizIndex + 1 < quizItems.length ? 'Next question' : 'Finish';
+    nextBtn.className = 'secondary-btn';
+    nextBtn.addEventListener('click', () => {
+      quizIndex += 1;
+      renderQuizItem();
+    });
+    quizArea.appendChild(nextBtn);
+  }
+
+  function renderVocabQuestion() {
+    const item = quizItems[quizIndex];
+
+    const word = document.createElement('p');
+    word.className = 'quiz-question-word';
+    word.textContent = item.kr;
+    quizArea.appendChild(word);
+
+    const ro = document.createElement('p');
+    ro.className = 'quiz-question-ro';
+    ro.textContent = romanizeText(item.kr);
+    quizArea.appendChild(ro);
+
+    const choicesWrap = document.createElement('div');
+    choicesWrap.className = 'quiz-choices';
+    const letters = ['A', 'B', 'C', 'D'];
+
+    item.options.forEach((option, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'quiz-choice-btn';
+      btn.innerHTML = `<span class="quiz-choice-letter">${letters[i]}</span><span>${option}</span>`;
+      btn.addEventListener('click', () => {
+        const isCorrect = option === item.correctEn;
+        if (isCorrect) quizScore += 1;
+        choicesWrap.querySelectorAll('.quiz-choice-btn').forEach((b, j) => {
+          b.disabled = true;
+          if (item.options[j] === item.correctEn) b.classList.add('correct');
+          else if (b === btn) b.classList.add('incorrect');
+        });
+        advanceQuiz();
+      });
+      choicesWrap.appendChild(btn);
+    });
+
+    quizArea.appendChild(choicesWrap);
+  }
+
+  function renderBlankQuestion() {
+    const item = quizItems[quizIndex];
 
     const sentence = document.createElement('p');
     sentence.className = 'quiz-sentence';
@@ -597,15 +697,7 @@
       }
       input.disabled = true;
       checkBtn.disabled = true;
-
-      const nextBtn = document.createElement('button');
-      nextBtn.textContent = quizIndex + 1 < quizItems.length ? 'Next question' : 'Finish';
-      nextBtn.className = 'secondary-btn';
-      nextBtn.addEventListener('click', () => {
-        quizIndex += 1;
-        renderQuizItem();
-      });
-      quizArea.appendChild(nextBtn);
+      advanceQuiz();
     }
 
     checkBtn.addEventListener('click', check);
